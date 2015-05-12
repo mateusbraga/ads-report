@@ -71,7 +71,7 @@
 % \documentclass[conference]{../sty/IEEEtran}
 
 
-
+\usepackage[margin=1in]{geometry}
 
 
 % Some very useful LaTeX packages include:
@@ -469,9 +469,15 @@ We can also think how an application could have different consistency requiremen
 
 As a correctness criteria for the application, the consistency guarantees need to be well documented and enforced by a storage system. As shown by the Jepsen project~\cite{jepsenWebsite,jepsenGithubWebsite}, this is unfortunately not usually the case. Many popular databases fail to satisfy its consistency guarantees when tested under realistic failure modes.
 
-There are two methods to verify and validate a system’s consistency guarantees. The first involves formally proving that the implementation design always satisfy the consistency model, in other words, it proves that it will never executes a sequence of events not allowed by the consistency model. Formal methods like this are usually not done in the industry and believed to require large amounts of time and hard to find expertise. Nevertheless, Amazon has reported successful stories of using TLA+, a formal specification language, in the design and verification of its distributed storage systems~\cite{newcombe2014use}.
+There are two methods to verify and validate a system’s consistency guarantees. The first involves formally proving that the implementation design always satisfy the consistency model, in other words, it proves that by the design it will never execute a sequence of events not allowed by the consistency model. Formal methods like this are usually not done in the industry and believed to require large amounts of time and hard to find expertise. Nevertheless, Amazon has reported successful stories of using TLA+, a formal specification language, in the design and verification of its distributed storage systems~\cite{newcombe2014use}.
 
-The second method is the test approach: look for an execution that is not allowed by the consistency model. This method does not prove correctness if it does not find any incorrect execution, but can tell with certainty that the implementation is wrong when it finds one. A test approach requires a way to tell that an execution is incorrect. When verifying a system's consistency guarantee, this can get very expensive since it involves searching for a sequence of the events that is allowed by the model and equivalent to the events produced by the execution. This search space is huge and contains every possible order of the events observed concurrently by different users of the system. 
+The second method is the test approach: look for an execution that is not allowed by the consistency model. This method does not prove correctness if it does not find any incorrect execution, but can tell with certainty that the implementation is wrong when it finds one. A test approach requires a way to tell that an execution is incorrect. When verifying a system's consistency guarantee, this involves searching for a sequence of the events allowed by the model that is equivalent to the events produced by the execution. This search space is huge and contains every possible order of the events observed concurrently by different users of the system. 
+
+\subsection{Model Checking}
+
+By answering whether an execution trace is acceptable in a consistency model, Knossos is effectively performing the job of a model checker for the context of consistency models. Since a model checker is also necessary in the formal methods approach, it is important to clarify the differences. 
+
+In the Knossos approach each execution trace is proved to satisfy linearizability independently. Even though it can say for sure whether one particular execution trace conforms to the model, it can’t say much about the other possible traces the system can execute. In a formal method approach, the design of the implementation is proved to always execute valid execution traces. Since the design still needs to be implemented, the formal method approach can’t say for sure that an implementation implements the verified model. \cite{newcombe2014use} argues that a formal proof is still worthwhile due to the increase in understanding of the design resulting from the formal proof specification process, and that this increases the chances of getting the code right.
 
 \section{Jepsen/Knossos}
 
@@ -482,12 +488,6 @@ The checking of all possible histories of events is done by the Knossos part of 
 In order for Knossos to explore the huge history search space, it uses search techniques that includes parallelization, memoization, and priority queues. These techniques reduce the total number of histories of events that need to be explored by ignoring redundant histories (branches that arrives to an already visited state) and focusing on cheaper branches first~\cite{knossosPostWebsite2}.
 
 In order to induce a system to execute an invalid sequence of events, Jepsen introduces network partitions between the system nodes. This is when the chance to find bugs in the implementation is usually higher, since the fault masking code is usually more complex than the happy case scenario.
-
-\subsection{Model Checking}
-
-By answering whether an execution trace is acceptable in a consistency model, Knossos is effectively performing the job of a model checker for the context of consistency models. Since a model checker is also necessary in the formal methods approach, it is important to clarify the differences. 
-
-In the Knossos approach each execution trace is proved to satisfy linearizability independently. Even though it can say for sure whether one particular execution trace conforms to the model, it can’t say much about the other possible traces the system can execute. In a formal method approach, the design of the implementation is proved to always execute valid execution traces. Since the design still needs to be implemented, the formal method approach can’t say for sure that an implementation implements the verified model. \cite{newcombe2014use} argues that a formal proof is still worthwhile due to the increase in understanding of the design resulting from the formal proof specification process, and that this increases the chances of getting the code right.
 
 \section{Network Partitions}
 
