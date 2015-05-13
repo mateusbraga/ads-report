@@ -504,7 +504,20 @@ etcd provides a choice on two consistency guarantees for the user's read request
 
 It is possible for etcd to implement a leader lease to avoid a round-trip of a quorum for reads~\cite{gray1989leases}, similarly to Chubby~\cite{burrows2006chubby}, but as indicated in the Raft paper, this would rely on timing for safety since it assumes bounded clock skew~\cite{ongaro2014search}.
 
+\section{Experiments}
+\subsection {Environment}
 
+The Jepsen software works by installing a desired distributed system on machines supplied by the user, and invoking reads and writes on it while creating network partitions. The machine on which Jepsen software runs will be referenced as the "client machine".
+
+Jepsen is written in Clojure, and so requires the leiningen~\cite{leiningen}, environment and a Java Virtual Machine (JVM) to be installed on the client machine.
+
+The user-supplied machines are do not have many requirements, except that they run the Debian operating system ~\cite{jepsenGithubWebsite}. In this way they can be physical machines, virtual machines in a cloud environment, or even Linux containers. The software communicates with the machines over SSH and requires modification to the /etc/hosts file
+
+
+\section{Analysis of Results}
+
+\section{Future Work}
+\subsection{Faults found in other systems}
 
 
 % An example of a floating figure using the graphicx package.
