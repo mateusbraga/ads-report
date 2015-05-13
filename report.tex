@@ -519,19 +519,27 @@ The nodes do not have many requirements, except that they run the Debian operati
 
 In our environment we rented a Linux VM from Amazon to act as the client machine, and set up Docker containers within the VM to act as the etcd nodes.
 
-Jensen comes prepackaged with the tools to test multiple distributed databases, including MongoDB, etcd, Aerospike, Consul, Elasticsearch, RabbitMQ, Cassandra, Zookeeper, NuoDB, and Kafka. However, Jepsen also provides an interface for a user to test any distributed database he wants by implementing certain methods in the source code. The user needs to implement setup() and teardown() methods for a custom database servers, and setup(), teardown(), and invoke() methods for clients transacting with those servers.
+Jepsen comes prepackaged with the tools to test multiple distributed databases, including MongoDB, etcd, Aerospike, Consul, Elasticsearch, RabbitMQ, Cassandra, Zookeeper, NuoDB, and Kafka. However, Jepsen also provides an interface for a user to test any distributed database he wants by implementing certain methods in the source code. The user needs to implement setup() and teardown() methods for a custom database servers, and setup(), teardown(), and invoke() methods for clients transacting with those servers.
 
 \subsection{Methodology}
 
-Jepsen attempts to discover a non-linearizable history by simulating multiple clients, each one communicating with a different node in the etcd cluster, but all reading and writing to/from the same register. Client invocations include read, write, and compare-and-set (CAS) operations. In response to these invocations, the clients may receive a response of ``ok'', indicating the requested operation was successful, ``fail", indicated the requested operation was unsuccessful, or ``info" indicating that it is unclear whether the requested operation was successful. The software keeps track on the client machine of what it expects to be in the register, and therefore which operations should be successful, and which values a read should return. 
+Jepsen attempts to discover a non-linearizable history by simulating multiple clients, each one communicating with a different node in the etcd cluster, but all issuing multiple random reads and writes to/from the same register in the span of about 30 seconds. Jepsen also introduces random network partitions during this time. Client invocations include read, write, and compare-and-set (CAS) operations. In response to these invocations, the clients may receive a response of ``ok'', indicating the requested operation was successful, ``fail", indicated the requested operation was unsuccessful, or ``info" indicating that it is unclear whether the requested operation was successful. The software keeps track on the client machine of what it expects to be in the register, and therefore which operations should be successful, and which values a read should return.
 
-failures found in other systems
-split brain problem
+Jepsen includes the ability to introduce many different types of network partitions. They include... We used a ``random halves" partitioning that completely isolates two out of the five nodes from the other three. In this way there will always be a connected majority of three nodes, but it is indeterminate whether the current leader will be in that majority.
+
+\section{Results}
+We ran 10 tests with at both the ``default" and ``quorum=true" consistency levels. We found that at the default level of consistency...
 
 
-\section{Analysis of Results}
+\subsection{Analysis of Results}
+
+\subsection{split-brain problem}
 
 \section{Future Work}
+- latency measurements
+- other types of failure introductions
+- mention other types of issues from other systems
+
 \subsection{Faults found in other systems}
 
 
