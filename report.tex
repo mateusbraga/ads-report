@@ -72,6 +72,9 @@
 
 
 \usepackage[margin=1in]{geometry}
+\usepackage{listings}
+
+
 
 
 % Some very useful LaTeX packages include:
@@ -127,7 +130,7 @@
 % *** GRAPHICS RELATED PACKAGES ***
 %
 \ifCLASSINFOpdf
-  % \usepackage[pdftex]{graphicx}
+   \usepackage[pdftex]{graphicx}
   % declare the path(s) where your graphic files are
   % \graphicspath{{../pdf/}{../jpeg/}}
   % and their extensions so you won't have to specify these with
@@ -446,6 +449,30 @@ The level of consistency of a storage system (its consistency guarantees) is an 
 
 A useful way to represent the function of a system, which includes its consistency guarantees, is through a model. A model of a system is intended to be simpler than its implementation, while still capturing the essential properties of the system. This is done by ignoring events that are not exposed through the system's interface. A fault tolerant distributed system model, for example, can be oblivious of data replicas and failure events tolerated by the implementation, since they are, by definition, not observed by the user~\cite{avizienis2004basic}. As with any other property in Computer Science, consistency can be formally expressed in terms of abstract algebra on top of a model. 'Survey on consistency conditions'~\cite{dziuma2013survey} does an excellent job as a formal presentation of the different major existing consistency guarantees. It comes from a computer architecture point of view but also surveys the consistency properties as they are used in the database community, including considerations like recoverability and avoiding cascading aborts.
 
+Listing \ref{linearizableModelCode} shows the model of a linearizable register. It ignores any possible concurrency and failures that can occur in a real system while keeping the essential function of a linearizable register system. With such a model, it is possible to check whether a real execution trace could have been executed by a linearizable register system or not.
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={A Linearizable Register Model.},label={linearizableModelCode}]
+=============================================
+var currentValue
+
+func handleOperation(operation) {
+    switch (operation) {
+    case "read":
+        return currentValue
+    case "write":
+        currentValue = operation.value
+    case "CAS":
+        if currentValue == operation.check {
+            currentValue = operation.value
+        }
+    }
+}
+=============================================
+\end{lstlisting}
+\end{figure}
+
 Consistency is a correctness property, and as such, needs to be always present in every execution of the system. This means it can be seen as a restriction on the possible history of events of the system (and its model). To say that a memory offers a certain consistency guarantee means that the memory system will never execute certain sequence of events made of reads and writes invocations and responses that does not pass the consistency conditions, as presented in~\cite{dziuma2013survey}. Consistency can also be extended to multi step operations, which can be seen as grouping of operations in transactions, and in this case its consistency conditions consider what transaction each event is part of.
 
 \subsection{Why Different Levels of Consistency?}
@@ -454,7 +481,14 @@ The question of what value a read should return does not have one right answer, 
 
 The strongest practical consistency level is linearizability. It can be informally described as having each operation appear to have happen at a single point in time between invocation and the receipt of the response. By the definition, linearizability guarantees that every invocation in a sequential process will see the result of a previous one. It also guarantees that the process will see the result of any other operation that completed before its operation started. Finally, having the operations occur as a single point in time is essential for atomic conditional writes like check-and-set operations (CAS), which are building blocks for sophisticated abstractions like transactions. Unfortunately, as mentioned, all these guarantees are costly, and weaker consistency guarantees are also sought after.
 
-TODO add image for linearizability
+Figure \ref{linearizabilityFigure} illustrates how the begin and end of the operations, along with its "commit time" (the point in time which it appears to occur) puts restrictions on possible values returned in a read.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3in]{images/linearizability}
+\caption{Linearizability example.}
+\label{linearizabilityFigure}
+\end{figure}
 
 The reason why an application can be OK with weaker consistency models is that what imposes requirements on the consistency model is the semantic of the data object being stored. An object for which any written value different than the initial default value is good enough (a semantical aspect) does not need linearizability. In fact, a replica that has seen a write does not need to be aware of any other write to the object. This allows for huge performance benefits. 
 
@@ -466,9 +500,9 @@ Even though there might be plenty of weak consistency applications out there, we
 
 \section{Verification and Validation}
 
-As a correctness criteria for the application, the consistency guarantees need to be well documented and enforced by a storage system. As shown by the Jepsen project~\cite{jepsenWebsite,jepsenGithubWebsite}, this is unfortunately not usually the case. Many popular databases fail to satisfy their consistency guarantees when tested under realistic failure modes.
+As a correctness criteria for the application, the consistency guarantees need to be well documented and enforced by the storage system. As shown by the Jepsen project~\cite{jepsenWebsite,jepsenGithubWebsite}, this is unfortunately not usually the case. Many popular databases fail to satisfy their consistency guarantees (in particular linearizability) when tested under realistic failure modes.
 
-There are two methods to verify and validate a system's consistency guarantees. The first involves formally proving that the implementation design always satisfy the consistency model, in other words, it proves that because of the design alone it will never execute a sequence of events not allowed by the consistency model. Formal methods like this are usually not done in the industry and believed to require large amounts of time and hard to find expertise. Nevertheless, Amazon has reported successful stories of using TLA+~\cite{tlaWebsite}, a formal specification language, in the design and verification of its distributed storage systems~\cite{newcombe2014use}.
+There are two methods to verify and validate a system's consistency guarantees. The first involves formally proving that the implementation design always satisfy the consistency model, in other words, it proves that by the design, it will never execute a sequence of events not allowed by the consistency model. Formal methods like this are usually not done in the industry and believed to require large amounts of time and hard to find expertise. Nevertheless, Amazon has reported successful stories of using TLA+~\cite{tlaWebsite}, a formal specification language, in the design and verification of its distributed storage systems~\cite{newcombe2014use}.
 
 The second method is the test approach: find an execution that is not allowed by the consistency model. This method does not prove correctness if it does not find any incorrect execution, but can tell with certainty that the implementation is wrong when it finds one. A test approach requires a way to tell that an execution is incorrect. When verifying a system's consistency guarantee, this involves searching for a sequence of the events allowed by the model that is equivalent to the one produced by the real execution. This search space is huge and contains every possible order of the events observed concurrently by different users of the system. 
 
@@ -476,15 +510,19 @@ The second method is the test approach: find an execution that is not allowed by
 
 By answering whether an execution trace is acceptable in a consistency model, the test approach is effectively performing the job of a model checker for the context of consistency models. Since a model checker is also necessary in the formal methods approach, it is important to clarify the differences. 
 
-In the test approach each execution trace is evaluated to see whether it is equivalent to a linearizable trace. Even though it can say for sure whether one particular execution trace conforms to the model, it can't say much about the other possible traces the system can execute. In a formal method approach, the design of the implementation is proved to always execute valid execution traces. Since the design still needs to be implemented, the formal method approach can't say for sure that an implementation implements the verified model either. \cite{newcombe2014use} argues that a formal proof is still worthwhile due to the increase in understanding of the design resulting from the formal proof specification process, and that this increases the chances of getting the code right.
+In the test approach each execution trace is evaluated to see whether it is equivalent to a linearizable trace. Even though it can say for sure whether one particular execution trace conforms to the model, it can't say much about the other possible traces the system can execute. In a formal method approach, the design (not the implementation) is proved to always execute valid execution traces. Since the design still needs to be implemented, the formal method approach can't say for sure that an implementation implements the verified model either. \cite{newcombe2014use} argues that a formal proof is still worthwhile due to the increase in understanding of the design resulting from the formal proof specification process, and that this increases the chances of getting the code right.
 
 \section{Jepsen/Knossos}
 
 The Jepsen project~\cite{jepsenWebsite, jepsenGithubWebsite} is a test approach of evaluating a system's consistency guarantees. It provides a framework to execute tests on whether the database provides linearizability using read, write and CAS operations. At particular moments, Jepsen creates a network partition in the test environment. This is called the 'nemesis' process, and has the intention of stressing the system to increase the chance of finding bugs. By having clients record the execution trace of operations against the system, Jepsen can at the end of the execution analyze whether the trace is linearizable or not using the formal definition of linearizability~\cite{dziuma2013survey}.
 
-Checking if a execution trace is linearizable is done by the Knossos part of the project. Its key idea uses the fact that in a linearizable schedule, each operation appears to occur at a single point in time. So it tries to find an ordering for all concurrent operations that is correct if executed in order by a single process (also means 'correct in the model'). When trying the multitude of possible ordering, Knossos ignores any partial sequence in which is a violation of the model, pruning considerably the factorial search space by ignoring all sequences that contain an invalid prefix.~\cite{knossosPostWebsite}.
+Checking if a execution trace is linearizable is done by the Knossos part of the project. Its key idea uses the fact that in a linearizable schedule, each operation appears to occur at a single point in time. So it tries to find an ordering for all concurrent operations that is correct if executed in order by a single process ('correct by the model'). When trying the multitude of possible ordering, Knossos ignores any partial sequence in which is a violation of the model, pruning considerably the factorial search space by ignoring all sequences that contain an invalid prefix.~\cite{knossosPostWebsite}.
+
+For example, if operation A cannot be before B, because A is a write(1) and B is a read(2), $A \rightarrow B \rightarrow C \rightarrow D$, and $A \rightarrow B \rightarrow D \rightarrow C$ cannot also be valid.
 
 Knossos also makes use of others search techniques that includes parallelization, memoization, and priority queues. These techniques reduce the total number of histories of events that need to be explored by ignoring redundant histories (branches that arrives to an already visited state) and focusing on cheaper branches first~\cite{knossosPostWebsite2}.
+
+For example, from the model in listing \ref{linearizableModelCode} it is easy to see that it does not matter how we got to a currentValue, since everything after that only cares about the current value. With this in mind, any two different branches in the search space that gets to the same state (current value), and still needs to consider the same set of operations, can be merged and we can be sure we will not miss anything.
 
 \section{Network Partitions}
 
