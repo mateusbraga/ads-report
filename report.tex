@@ -507,11 +507,22 @@ It is possible for etcd to implement a leader lease to avoid a round-trip of a q
 \section{Experiments}
 \subsection {Environment}
 
-The Jepsen software works by installing a desired distributed system on machines supplied by the user, and invoking reads and writes on it while creating network partitions. The machine on which Jepsen software runs will be referenced as the "client machine".
+The Jepsen software works by installing a desired distributed system on machines supplied by the user, and invoking reads and writes on it while creating network partitions. The machine on which Jepsen software runs will be referenced as the "client machine". The user-supplied machines will be referenced as "nodes".
 
 Jepsen is written in Clojure, and so requires the leiningen~\cite{leiningen}, environment and a Java Virtual Machine (JVM) to be installed on the client machine.
 
-The user-supplied machines are do not have many requirements, except that they run the Debian operating system ~\cite{jepsenGithubWebsite}. In this way they can be physical machines, virtual machines in a cloud environment, or even Linux containers. The software communicates with the machines over SSH and requires modification to the /etc/hosts file
+The nodes do not have many requirements, except that they run the Debian operating system and that there are five of them~\cite{jepsenGithubWebsite}. In this way the nodes can be physical machines, virtual machines in a cloud environment, or even Linux containers. The software on the client machine communicates with the nodes over SSH and requires modification to the /etc/hosts file so that the Jepsen software can contact nodes by name. The SSH login credentials need to be hardcoded into the Jepsen source code. The nodes therefore need an SSH server installed and configured to accept root logins. The /etc/hosts file on the nodes themselves also needs to be configured with the same name-to-IP address mappings that client machine has. It is not necessary to manually install the desired distributed system on the nodes, as Jepsen automatically initiates downloads over SSH, installs all the required dependencies, and other tools needed for testing, like the iptables program. Jepsen uses iptables to simulate network partitions by installing blocking rules.
+
+In our environment we rented a Linux VM from Amazon to act as the client machine, and set up Docker containers within the VM to act as the etcd nodes.
+
+Jensen comes prepackaged with the tools to test multiple distributed databases, including MongoDB, etcd, Aerospike, Consul, Elasticsearch, RabbitMQ, Cassandra, Zookeeper, NuoDB, and Kafka. However, Jepsen also provides an interface for a user to test any distributed database he wants by implementing certain methods in the source code. The user needs to implement setup() and teardown() methods for a custom database servers, and setup(), teardown(), and invoke() methods for clients transacting with those servers.
+
+\subsection{Methodology}
+
+Jepsen attempts to discover a non-linearizable history by simulating multiple clients, each one communicating with a different node in the etcd cluster, but all reading and writing to/from the same register. Client invocations include read, write, and compare-and-set (CAS) operations. In response to these invocations, the clients may receive a response of ``ok'', indicating the requested operation was successful, ``fail", indicated the requested operation was unsuccessful, or ``info" indicating that it is unclear whether the requested operation was successful. The software keeps track on the client machine of what it expects to be in the register, and therefore which operations should be successful, and which values a read should return. 
+
+failures found in other systems
+split brain problem
 
 
 \section{Analysis of Results}
