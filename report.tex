@@ -432,14 +432,9 @@ The abstract goes here.
 \section{Introduction}
 % no \IEEEPARstart
 
-Our project is concerned with the subject of consistency in distributed systems and we study the design of etcd and its consistency guarantees in the middle of network partitions. It fits in the scheme of verification and validation and ensuring that a system provides the properties it was designed to.
+Our project is concerned with the subject of consistency in distributed systems with a focus on Etcd and its consistency guarantees in the middle of network partitions. It includes a study of consistency guarantees, verification and validation, network partitions, consensus and up to developing an understanding of a current tool to evaluate linearizability of distributed systems: Jepsen.
 
-etcd uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. etcd provides two levels of consistency. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting.
-
-Jepsen's previous work has shown that etcd needed special care to deal with network partitions. In its new version, etcd has taken measures to make it clear what consistency guarantees are available. We would like to rerun the Jepsen tests and ...
-
-TODO
-
+Etcd is consistent, key-store system that uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. Jepsen’s previous work has shown that etcd needed special care to deal with network partitions. In its new version, Etcd has taken measures to make it clear what consistency guarantees are available. Etcd provides two levels of consistency: sequential consistency and linearizability. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting. We reran the Jepsen tests on etcd for each of the two consistency levels.
 
 \section{Consistency}
 
@@ -459,11 +454,11 @@ Consistency is a correctness property, and as such, can be seen as a restriction
 
 The question of what value a read should return does not have a right answer, but usually an intuitive one. For a sequential process with its own private memory, the intuitive answer is that the read should return the last written value by the process. Todays programming model is not only concurrent, but also asynchronous and distributed. This reality requires considerations on what "last written value" means, and brings the necessity of ordering operations in some way even in the absence of a global real-time clock. In order to do this, consistency models treat operations as an interval defined by the invocation and response point (on the invoker process). Another consequence of the asynchronous system reality is that performance and availability considerations brought an interest on weaker consistency models that fails on the intuition test, but attends applications that need the extra scalability.
 
-TODO present linearizability to prepare for next paragraph
+The strongest practical consistency level is linearizability. It can be informally described as having each operation appear to have happen at a single point in time between invocation and the receipt of the response. By the definition, linearizability guarantees that every invocation in a sequential process will see the result of a previous one. It also guarantees that the process will see the result of any other operation that completed before its operation started. Finally, having the operations occur as a single point in time is essential for atomic conditional writes like check-and-set operations (CAS), which are building blocks for sophisticated abstractions like transactions. Unfortunately, as mentioned, all these guarantees are costly, and weaker consistency guarantees are also sought after.
 
 The reason why an application can be OK with weaker consistency models is that what imposes requirements on the consistency model is the semantic of the data object being stored. An object for which any written value different than the initial default value is good enough (a semantical aspect) does not need linearizability. In fact, a replica that has seen a write does not need to be aware of any other write to the object. This allows for huge performance benefits. 
 
-We can also think how an application could have different consistency requirements for different data objects. Such applications could make use of combinations of storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as “A sequential history H is legal, if for each object o, H | o??? belongs to the sequential specification for o."
+It is also possible to think how an application could have different consistency requirements for different data objects. Such application could make use of combinations storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as “A sequential history H is legal, if for each object o, H | o belongs to the sequential specification for o."
 
 \section{Verification and Validation}
 
@@ -481,13 +476,11 @@ In the test approach each execution trace is evaluated to see whether it is equi
 
 \section{Jepsen/Knossos}
 
-The Jepsen project is a test approach of evaluating a system's consistency guarantees. TODO ...
+The Jepsen project~\cite{jepsenWebsite, jepsenGithubWebsite} is a test approach of evaluating a system's consistency guarantees. It provides a framework to execute tests on whether the database provides linearizability using read, write and CAS operations. At particular moments, Jepsen creates a network partition in the test environment. This is called the 'nemesis' process, and has the intention of stressing the system to increase the chance of finding bugs. By having clients record the execution trace of operations against the system, Jepsen can at the end of the execution analyze whether the trace is linearizable or not using the formal definition of linearizability~\cite{dziuma2013survey}.
 
-The checking of all possible histories of events is done by the Knossos part of the Jepsen project, which works on top of a definable FSM model of how the system works~\cite{knossosPostWebsite}. An alternative to searching for a valid sequence of events is to just check if the final result after a sequence of operations is as expected. This is what Jepsen did before implementing Knossos and still found interesting results~\cite{jepsenWebsite}.
+Checking if a execution trace is linearizable is done by the Knossos part of the project. Its key idea uses the fact that in a linearizable schedule, each operation appears to occur at a single point in time. So it tries to find an ordering for all concurrent operations that is correct if executed in order by a single process (also means 'correct in the model'). When trying the multitude of possible ordering, Knossos ignores any partial sequence in which is a violation of the model, pruning considerably the factorial search space by ignoring all sequences that contain an invalid prefix.~\cite{knossosPostWebsite}.
 
-In order for Knossos to explore the huge history search space, it uses search techniques that includes parallelization, memoization, and priority queues. These techniques reduce the total number of histories of events that need to be explored by ignoring redundant histories (branches that arrives to an already visited state) and focusing on cheaper branches first~\cite{knossosPostWebsite2}.
-
-In order to induce a system to execute an invalid sequence of events, Jepsen introduces network partitions between the system nodes. This is when the chance to find bugs in the implementation is usually higher, since the fault masking code is usually more complex than the happy case scenario.
+Knossos also makes use of others search techniques that includes parallelization, memoization, and priority queues. These techniques reduce the total number of histories of events that need to be explored by ignoring redundant histories (branches that arrives to an already visited state) and focusing on cheaper branches first~\cite{knossosPostWebsite2}.
 
 \section{Network Partitions}
 
