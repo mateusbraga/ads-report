@@ -459,11 +459,11 @@ var currentValue
 
 func handleOperation(operation) {
     switch (operation) {
-    case "read":
+    case ``read":
         return currentValue
-    case "write":
+    case ``write":
         currentValue = operation.value
-    case "CAS":
+    case ``CAS":
         if currentValue == operation.check {
             currentValue = operation.value
         }
@@ -477,11 +477,11 @@ Consistency is a correctness property, and as such, needs to be always present i
 
 \subsection{Why Different Levels of Consistency?}
 
-The question of what value a read should return does not have one right answer, but usually an intuitive one. For a sequential process with its own private memory, the intuitive answer is that the read should return the last written value by the process. Todays programming model is not only concurrent, but also asynchronous and distributed. This reality requires considerations on what "last written value" means, and brings the necessity of ordering operations in some way even in the absence of a global real-time clock. In order to do this, consistency models treat operations as an interval defined by the invocation and response point (on the invoker process). Another consequence of the asynchronous system reality is that performance and availability considerations brought an interest on weaker consistency models that fails on the intuition test, but attends applications that need the extra scalability.
+The question of what value a read should return does not have one right answer, but usually an intuitive one. For a sequential process with its own private memory, the intuitive answer is that the read should return the last written value by the process. Todays programming model is not only concurrent, but also asynchronous and distributed. This reality requires considerations on what ``last written value" means, and brings the necessity of ordering operations in some way even in the absence of a global real-time clock. In order to do this, consistency models treat operations as an interval defined by the invocation and response point (on the invoker process). Another consequence of the asynchronous system reality is that performance and availability considerations brought an interest on weaker consistency models that fails on the intuition test, but attends applications that need the extra scalability.
 
 The strongest practical consistency level is linearizability. It can be informally described as having each operation appear to have happen at a single point in time between invocation and the receipt of the response. By the definition, linearizability guarantees that every invocation in a sequential process will see the result of a previous one. It also guarantees that the process will see the result of any other operation that completed before its operation started. Finally, having the operations occur as a single point in time is essential for atomic conditional writes like check-and-set operations (CAS), which are building blocks for sophisticated abstractions like transactions. Unfortunately, as mentioned, all these guarantees are costly, and weaker consistency guarantees are also sought after.
 
-Figure \ref{linearizabilityFigure} illustrates how the begin and end of the operations, along with its "commit time" (the point in time which it appears to occur) puts restrictions on possible values returned in a read.
+Figure \ref{linearizabilityFigure} illustrates how the begin and end of the operations, along with its ``commit time" (the point in time which it appears to occur) puts restrictions on possible values returned in a read.
 
 \begin{figure}[!t]
 \centering
@@ -492,11 +492,11 @@ Figure \ref{linearizabilityFigure} illustrates how the begin and end of the oper
 
 The reason why an application can be OK with weaker consistency models is that what imposes requirements on the consistency model is the semantic of the data object being stored. An object for which any written value different than the initial default value is good enough (a semantical aspect) does not need linearizability. In fact, a replica that has seen a write does not need to be aware of any other write to the object. This allows for huge performance benefits. 
 
-It is also possible to think how an application could have different consistency requirements for different data objects. Such application could make use of combinations storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as “A sequential history H is legal, if for each object o, H | o belongs to the sequential specification for o."
+It is also possible to think how an application could have different consistency requirements for different data objects. Such application could make use of combinations storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as ``A sequential history H is legal, if for each object o, H | o belongs to the sequential specification for o."
 
-Being able to work on stale data is related to whether conditional reads/writes (that is, reads/writes based on the value of an object) are critical to the correctness of the application. If missing a write is harmless for the function provided, many of the guarantees developed by years of research on storage systems can be left aside. Instead of the peace of mind of programming with the guarantee that transactions are atomic (as before-or-after and all-or-nothing properties), a weak consistency application might simply not have to worry about atomicity at all. So the "problems" of weaker consistency might not be problems at all when it is appropriate for the application.
+Being able to work on stale data is related to whether conditional reads/writes (that is, reads/writes based on the value of an object) are critical to the correctness of the application. If missing a write is harmless for the function provided, many of the guarantees developed by years of research on storage systems can be left aside. Instead of the peace of mind of programming with the guarantee that transactions are atomic (as before-or-after and all-or-nothing properties), a weak consistency application might simply not have to worry about atomicity at all. So the ``problems" of weaker consistency might not be problems at all when it is appropriate for the application.
 
-Even though there might be plenty of weak consistency applications out there, we have little experience with the design of such applications other than the potential use of causal consistency to support social network's link sharing, photos and albums dependencies~\cite{lloyd2011don}. We believe it is likely for applications to most of the time have a set of objects that requires linearizability, while others mostly-reads-and-rarely-updated objects could be separately stored in a weaker consistency ("cheaper") storage.
+Even though there might be plenty of weak consistency applications out there, we have little experience with the design of such applications other than the potential use of causal consistency to support social network's link sharing, photos and albums dependencies~\cite{lloyd2011don}. We believe it is likely for applications to most of the time have a set of objects that requires linearizability, while others mostly-reads-and-rarely-updated objects could be separately stored in a weaker consistency (``cheaper") storage.
 
 \section{Verification and Validation}
 
@@ -538,9 +538,9 @@ A partition between the service and the client only leaves the option for the cl
 
 \section{etcd/Raft}
 
-Raft is a consensus algorithm designed with understandability in mind. It provides a result equivalent to (multi)-Paxos, and it is as efficient as Paxos~\cite{ongaro2014search}. Its design includes leader election, snapshots, and membership changes. In Raft, the leader makes all the decisions regarding log entries and transmits them to the followers. Its election logic guarantees only one leader per “term" and that any future leader will contain operations committed by previous leaders. Every new leader means a new term, in case where two leader is running, the one with the smaller term will become a follower as soon as it knows about the new leader.
+Raft is a consensus algorithm designed with understandability in mind. It provides a result equivalent to (multi)-Paxos, and it is as efficient as Paxos~\cite{ongaro2014search}. Its design includes leader election, snapshots, and membership changes. In Raft, the leader makes all the decisions regarding log entries and transmits them to the followers. Its election logic guarantees only one leader per ``term" and that any future leader will contain operations committed by previous leaders. Every new leader means a new term, in case where two leader is running, the one with the smaller term will become a follower as soon as it knows about the new leader.
 
-etcd implements its consistency guarantees on top of the Raft consensus algorithm~\cite{ongaro2014search,etcdGithubWebsite}. It uses distributed consensus to answer what is the “last written value" in a distributed setting. As Raft decides on an order to apply operations to a replicated state machine, the “last written value" is chosen in its linearizability implementation by sending the read to the most current Raft leader, which returns the value of the last committed write. This guarantees linearizability because the most current Raft leader is the source of truth regarding which writes are committed at each point in time and no write response is sent before it is committed. 
+etcd implements its consistency guarantees on top of the Raft consensus algorithm~\cite{ongaro2014search,etcdGithubWebsite}. It uses distributed consensus to answer what is the ``last written value" in a distributed setting. As Raft decides on an order to apply operations to a replicated state machine, the ``last written value" is chosen in its linearizability implementation by sending the read to the most current Raft leader, which returns the value of the last committed write. This guarantees linearizability because the most current Raft leader is the source of truth regarding which writes are committed at each point in time and no write response is sent before it is committed. 
 
 etcd provides a choice on two consistency guarantees for the user's read requests. This is done in a per read request base with the quorum=true flag. A read with the quorum=true flag is guaranteed linearizability as explained above. The name of the flag comes from the necessary quorum of answers a raft leader needs to wait for in order to confirm it is the most current Raft leader. In a read with quorum=false (the default), the Raft leader does not ask for a confirmation to its peers that it is still the most current Raft leader. This option does not provide linearizability, and the value returned by the read might not be the last one committed. This happens when a new leader is elected and the previous leader that responded the read request does not know about it, so a write committed by the new leader would be ignored. 
 
@@ -549,7 +549,7 @@ It is possible for etcd to implement a leader lease to avoid a round-trip of a q
 \section{Experiments}
 \subsection {Environment}
 
-The Jepsen software works by installing a desired distributed system on machines supplied by the user, and invoking reads and writes on it while creating network partitions. The machine on which Jepsen software runs will be referenced as the "client machine". The user-supplied machines will be referenced as "nodes".
+The Jepsen software works by installing a desired distributed system on machines supplied by the user, and invoking reads and writes on it while creating network partitions. The machine on which Jepsen software runs will be referenced as the ``client machine". The user-supplied machines will be referenced as ``nodes".
 
 Jepsen is written in Clojure, and so requires the leiningen~\cite{leiningen}, environment and a Java Virtual Machine (JVM) to be installed on the client machine.
 
@@ -566,7 +566,7 @@ Jepsen attempts to discover a non-linearizable history by simulating multiple cl
 Jepsen includes the ability to introduce many different types of network partitions. They include... We used a ``random halves" partitioning that completely isolates two out of the five nodes from the other three. In this way there will always be a connected majority of three nodes, but it is indeterminate whether the current leader will be in that majority.
 
 \subsection{Results}
-We ran 10 tests with at both the ``default" and ``quorum=true" consistency levels. We found that at the default level of consistency, only 2 out of the 10 tests were linearizable in the presence of successive "random halves" partitions. However, when under the ``quorum=true" consistency level, all 10 tests were successful in that they failed to produce a history that was not linearizable, even under the presence of random network partitions. Out of the 8 non-linearizable tests, 6 were failed due to an inconsistent read operation, and 2 failed due to an inconsistent CAS operation.
+We ran 10 tests with at both the ``default" and ``quorum=true" consistency levels. We found that at the default level of consistency, only 2 out of the 10 tests were linearizable in the presence of successive ``random halves" partitions. However, when under the ``quorum=true" consistency level, all 10 tests were successful in that they failed to produce a history that was not linearizable, even under the presence of random network partitions. Out of the 8 non-linearizable tests, 6 were failed due to an inconsistent read operation, and 2 failed due to an inconsistent CAS operation.
 
 However, we also found that the ``quorum=true" setting, decreased availability during the tests. Under the default setting, no read operation timed out. But under the ``quorum=true" setting, 16\% of read operations timed out, on average. Both consistency settings exhibited timeouts for write and CAS operations at a rate or 20-25\%, on average.
 
@@ -616,7 +616,7 @@ INFO  jepsen.core - Worker 4 starting
 \end{lstlisting}
 \end{figure}
 
-Listing 3 shows the next phase of the Jepsen test, in which the virtual clients invoke database operations and receive responses. The number immediately following the hyphen represents the client process. Some operations succeed, and some fail. For example in Listing 3 we see that process 0 successfully writes the value "3" to the register. Process 4 fails to do a CAS from "2" to "3". Presumably this is because 2 was not the current value of the register.
+Listing 3 shows the next phase of the Jepsen test, in which the virtual clients invoke database operations and receive responses. The number immediately following the hyphen represents the client process. Some operations succeed, and some fail. For example in Listing 3 we see that process 0 successfully writes the value ``3" to the register. Process 4 fails to do a CAS from ``2" to ``3". Presumably this is because 2 was not the current value of the register.
 
 \begin{figure}[!t]
     \scriptsize
@@ -639,21 +639,21 @@ After some time, Jepsen introduces random network partitions. The output in List
 \begin{lstlisting}[caption={Network Partition},label={networkPartition}]
 =============================================
 INFO  jepsen.util - :nemesis    :info   
-	:start  "Cut off {:n2 #{:n5 :n1}, :n4 #{:n5 :n1}, 
+	:start  ``Cut off {:n2 #{:n5 :n1}, :n4 #{:n5 :n1}, 
 	:n3 #{:n5 :n1}, :n1 #{:n3 :n4 :n2}, 
 	:n5 #{:n3 :n4 :n2}}"
 =============================================
 \end{lstlisting}
 \end{figure}
 
-When the operations and network partitions finish, the Knossos subsystem searches over the space of possibly linearizable histories. If it can't find one, it reports an inconsistent operation. Listing 5 shows that one of the read operations successfully read the value of "4" from the register, when all histories indicate the value was "0". Listing 6 shows one possible history (of many) that creates these circumstances.
+When the operations and network partitions finish, the Knossos subsystem searches over the space of possibly linearizable histories. If it can't find one, it reports an inconsistent operation. Listing 5 shows that one of the read operations successfully read the value of ``4" from the register, when all histories indicate the value was ``0". Listing 6 shows one possible history (of many) that creates these circumstances.
 
 \begin{figure}[!t]
     \scriptsize
 \begin{lstlisting}[caption={Failure Result},label={failureResult}]
 =============================================
 Inconsistent state transitions:
-([{:value 0} "can't read 4 from register 0"])
+([{:value 0} ``can't read 4 from register 0"])
 =============================================
 \end{lstlisting}
 \end{figure}
@@ -690,7 +690,7 @@ led to state:
 
 \subsection{Analysis of Results}
 
-We are not absolutely certain of what causes the inconsistent operations. However some prior work\cite{jepsenetcd} has been done in this area and suggests that when a network partition leaves a leader in the minority partition, a new leader election takes place in the majority, so there are two leaders on either side of the partition. The system has a "split-brain". Under the default consistency level, reads are required to go through the leader. If the leader in the minority partition receives a read request before it is aware of the network partition, it will return the value in the register because it believes it is still the leader. The ``quorum=true" consistency level forces reads to go through the same raft consensus process as writes. This explains why there are no inconsistencies when under ``quorume=true", but also why availability decreases under this setting.
+We are not absolutely certain of what causes the inconsistent operations. However some prior work\cite{jepsenetcd} has been done in this area and suggests that when a network partition leaves a leader in the minority partition, a new leader election takes place in the majority, so there are two leaders on either side of the partition. The system has a ``split-brain". Under the default consistency level, reads are required to go through the leader. If the leader in the minority partition receives a read request before it is aware of the network partition, it will return the value in the register because it believes it is still the leader. The ``quorum=true" consistency level forces reads to go through the same raft consensus process as writes. This explains why there are no inconsistencies when under ``quorume=true", but also why availability decreases under this setting.
 
 \section{Future Work}
 
@@ -787,7 +787,7 @@ Our tests focused on etcd. However, there are many distributed systems that Jeps
 
 \section{Conclusion}
 
-We presented a study of consistency in distributed database systems, and the effects of network partitions efcd's fulfillment of consistency guarantees. We found evidence to support that etcd fulfills its promises, and that higher consistency levels bring a tradeoff in availability. We offered a proposed explanation of what happens "behind the scenes" when failures in linearizability happen. Finally, we proposed topics for future work in this area.
+We presented a study of consistency in distributed database systems, and the effects of network partitions efcd's fulfillment of consistency guarantees. We found evidence to support that etcd fulfills its promises, and that higher consistency levels bring a tradeoff in availability. We offered a proposed explanation of what happens ``behind the scenes" when failures in linearizability happen. Finally, we proposed topics for future work in this area.
 
 
 
