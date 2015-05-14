@@ -35,11 +35,22 @@ A.~Avizienis, J.-C. Laprie, B.~Randell, and C.~Landwehr, ``Basic concepts and
 D.~Dziuma, P.~Fatourou, E.~Kanellou, and A.~Kasra, ``Survey on consistency
   conditions,'' Tech. Rep. 439, FORTH-ICS, Tech. Rep., 2013.
 
+\bibitem{lloyd2011don}
+W.~Lloyd, M.~J. Freedman, M.~Kaminsky, and D.~G. Andersen, ``Don't settle for
+  eventual: scalable causal consistency for wide-area storage with cops,'' in
+  \emph{Proceedings of the Twenty-Third ACM Symposium on Operating Systems
+  Principles}.\hskip 1em plus 0.5em minus 0.4em\relax ACM, 2011, pp. 401--416.
+
 \bibitem{jepsenWebsite}
 ``{Jepsen},'' https://aphyr.com/tags/jepsen, Web 1 Apr. 2015.
 
 \bibitem{jepsenGithubWebsite}
 ``{Aphyr/jepsen},'' https://github.com/aphyr/jepsen, Web 1 Apr. 2015.
+
+\bibitem{tlaWebsite}
+``{The TLA Home Page},''
+  http://research.microsoft.com/en-us/um/people/lamport/tla/tla.html, Web 13
+  May 2015.
 
 \bibitem{newcombe2014use}
 C.~Newcombe, T.~Rath, F.~Zhang, B.~Munteanu, M.~Brooker, and M.~Deardeuff,
@@ -91,6 +102,9 @@ M.~Burrows, ``The chubby lock service for loosely-coupled distributed
   systems,'' in \emph{Proceedings of the 7th symposium on Operating systems
   design and implementation}.\hskip 1em plus 0.5em minus 0.4em\relax USENIX
   Association, 2006, pp. 335--350.
+
+\bibitem{leiningen}
+``{Leiningen},'' http://leiningen.org/, Web 1 Apr. 2015.
 
 \bibitem{IEEEexample:bluebookarticle}
 \BIBentryALTinterwordspacing

@@ -523,17 +523,25 @@ Jepsen comes prepackaged with the tools to test multiple distributed databases, 
 
 \subsection{Methodology}
 
-Jepsen attempts to discover a non-linearizable history by simulating multiple clients, each one communicating with a different node in the etcd cluster, but all issuing multiple random reads and writes to/from the same register in the span of about 30 seconds. Jepsen also introduces random network partitions during this time. Client invocations include read, write, and compare-and-set (CAS) operations. In response to these invocations, the clients may receive a response of ``ok'', indicating the requested operation was successful, ``fail", indicated the requested operation was unsuccessful, or ``info" indicating that it is unclear whether the requested operation was successful. The software keeps track on the client machine of what it expects to be in the register, and therefore which operations should be successful, and which values a read should return.
+Jepsen attempts to discover a non-linearizable history by simulating multiple clients, each one communicating with a different node in the etcd cluster, but all issuing multiple (around 90) random reads and writes to/from the same register in the span of about 30 seconds. Jepsen also introduces random network partitions during this time. Client invocations include read, write, and compare-and-set (CAS) operations. In response to these invocations, the clients may receive a response of ``ok'', indicating the requested operation was successful, ``fail", indicated the requested operation was unsuccessful, or ``info" indicating that it is unclear whether the requested operation was successful. The software keeps track on the client machine of what it expects to be in the register, and therefore which operations should be successful, and which values a read should return.
 
 Jepsen includes the ability to introduce many different types of network partitions. They include... We used a ``random halves" partitioning that completely isolates two out of the five nodes from the other three. In this way there will always be a connected majority of three nodes, but it is indeterminate whether the current leader will be in that majority.
 
-\section{Results}
-We ran 10 tests with at both the ``default" and ``quorum=true" consistency levels. We found that at the default level of consistency...
+\subsection{Results}
+We ran 10 tests with at both the ``default" and ``quorum=true" consistency levels. We found that at the default level of consistency, only 2 out of the 10 tests were linearizable in the presence of successive "random halves" partitions. However, when under the ``quorum=true" consistency level, all 10 tests were successful in that they failed to produce a history that was not linearizable, even under the presence of random network partitions. Out of the 8 non-linearizable tests, 6 were failed due to an inconsistent read operation, and 2 failed due to an inconsistent CAS operation.
+
+However, we also found that the ``quorum=true" setting, decreased availability during the tests. Under the default setting, no read operation timed out. But under the ``quorum=true" setting, 16\% of read operations timed out, on average. Both consistency settings exhibited timeouts for write and CAS operations at a rate or 20-25\%, on average.
+
+
+\subsection{Interpreting Output}
 
 
 \subsection{Analysis of Results}
 
+
 \subsection{split-brain problem}
+
+We are not absolutely certain of what causes the inconsistent operations. However some prior work has been done in this area and 
 
 \section{Future Work}
 - latency measurements
