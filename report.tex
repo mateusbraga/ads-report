@@ -406,7 +406,9 @@ ma3382@columbia.edu}}
 
 \begin{abstract}
 %\boldmath
-The abstract goes here.
+
+Our project is concerned with the subject of consistency in distributed systems, with a focus on etcd and its consistency guarantees in the middle of network partitions. Among the topics explored are consistency guarantees, verification and validation, network partitions, consensus and Jepsen, a framework to evaluate linearizability of distributed systems.
+
 \end{abstract}
 % IEEEtran.cls defaults to using nonbold math in the Abstract.
 % This preserves the distinction between vectors and scalars. However,
@@ -435,9 +437,9 @@ The abstract goes here.
 \section{Introduction}
 % no \IEEEPARstart
 
-Our project is concerned with the subject of consistency in distributed systems, with a focus on etcd and its consistency guarantees in the middle of network partitions. Among the topics involved are consistency guarantees, verification and validation, network partitions, consensus and Jepsen, a framework to evaluate linearizability of distributed systems.
+Consistency is an important and complicated topic of distributed systems. This project studies and analyzes consistency guarantees of systems, in specific in the middle of network partitions. In a way to see not only the requirements, but also how to implement them, we focus on etcd and its consistency guarantees. Also, to be able to test whether the implementation correctly provides the guarantees, we study and apply Jepsen: a framework to evaluate linearizability of distributed systems.
 
-etcd is a consistent, key-store system that uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. Jepsen’s previous work has shown that etcd needed special care to deal with network partitions. In its latest version (v2.0), etcd has taken measures to make it clear what consistency guarantees are available. etcd provides two levels of consistency: sequential consistency and linearizability. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting. We reran the Jepsen tests on etcd for each of the two consistency levels.
+etcd is a consistent, key-store system that uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. Jepsen’s previous work has shown that etcd needed special care to deal with network partitions. In its latest version (v2.0), etcd has taken measures to make it clear what consistency guarantees are available. etcd provides two levels of consistency: default and linearizability. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting. We reran the Jepsen tests on etcd for each of the two consistency levels.
 
 A system, in its role of service provider, provides an interface to its users that performs a certain function. In the context of storage systems, memories, and databases, the system's high-level function is fundamental to programmers and involves in a way or another to remember data values for use in computation~\cite{saltzer2009principles}. Very different types of interfaces exist for such systems, for example, SQL, key-value mapping, file system, and objects, but all of them in a way or another allows for the user to read and write data. This project is interested in a particular property of storage systems: its consistency guarantees.
 
@@ -455,8 +457,10 @@ Listing \ref{linearizableModelCode} shows the model of a linearizable register. 
     \scriptsize
 \begin{lstlisting}[caption={A Linearizable Register Model.},label={linearizableModelCode}]
 =============================================
+// state
 var currentValue
 
+// transitions
 func handleOperation(operation) {
     switch (operation) {
     case "read":
@@ -479,9 +483,9 @@ Consistency is a correctness property, and as such, needs to be always present i
 
 The question of what value a read should return does not have one right answer, but usually an intuitive one. For a sequential process with its own private memory, the intuitive answer is that the read should return the last written value by the process. Todays programming model is not only concurrent, but also asynchronous and distributed. This reality requires considerations on what "last written value" means, and brings the necessity of ordering operations in some way even in the absence of a global real-time clock. In order to do this, consistency models treat operations as an interval defined by the invocation and response point (on the invoker process). Another consequence of the asynchronous system reality is that performance and availability considerations brought an interest on weaker consistency models that fails on the intuition test, but attends applications that need the extra scalability.
 
-The strongest practical consistency level is linearizability. It can be informally described as having each operation appear to have happen at a single point in time between invocation and the receipt of the response. By the definition, linearizability guarantees that every invocation in a sequential process will see the result of a previous one. It also guarantees that the process will see the result of any other operation that completed before its operation started. Finally, having the operations occur as a single point in time is essential for atomic conditional writes like check-and-set operations (CAS), which are building blocks for sophisticated abstractions like transactions. Unfortunately, as mentioned, all these guarantees are costly, and weaker consistency guarantees are also sought after.
+The strongest practical consistency level is linearizability. It can be informally described as having each operation appear to have happen at a single point in time between invocation and the receipt of the response. By the definition, linearizability guarantees that every invocation in a sequential process will see the result of a previous one. It also guarantees that the process will see the result of any other operation that completed before its operation started. Finally, having the operations occur as a single point in time is essential for atomic conditional writes like check-and-set operations (CAS), which are building blocks for sophisticated abstractions like transactions. Unfortunately, as mentioned, all these guarantees are expensive, and weaker consistency guarantees are also sought after.
 
-Figure \ref{linearizabilityFigure} illustrates how the begin and end of the operations, along with its "commit time" (the point in time which it appears to occur) puts restrictions on possible values returned in a read.
+Figure \ref{linearizabilityFigure} illustrates how the begin and end of the operations, along with its "commit time" (the point in time which it appears to occur) creates restrictions on possible values returned in a read.
 
 \begin{figure}[!t]
 \centering
@@ -492,11 +496,11 @@ Figure \ref{linearizabilityFigure} illustrates how the begin and end of the oper
 
 The reason why an application can be OK with weaker consistency models is that what imposes requirements on the consistency model is the semantic of the data object being stored. An object for which any written value different than the initial default value is good enough (a semantical aspect) does not need linearizability. In fact, a replica that has seen a write does not need to be aware of any other write to the object. This allows for huge performance benefits. 
 
-It is also possible to think how an application could have different consistency requirements for different data objects. Such application could make use of combinations storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as “A sequential history H is legal, if for each object o, H | o belongs to the sequential specification for o."
+It is also possible to think how an application could have different consistency requirements for different data objects. Such application could make use of combinations storage systems consistency guarantees while paying in complexity costs. This is indicated on the formal definitions in~\cite{dziuma2013survey} as ``A sequential history H is legal, if for each object o, H | o belongs to the sequential specification for o."
 
 Being able to work on stale data is related to whether conditional reads/writes (that is, reads/writes based on the value of an object) are critical to the correctness of the application. If missing a write is harmless for the function provided, many of the guarantees developed by years of research on storage systems can be left aside. Instead of the peace of mind of programming with the guarantee that transactions are atomic (as before-or-after and all-or-nothing properties), a weak consistency application might simply not have to worry about atomicity at all. So the "problems" of weaker consistency might not be problems at all when it is appropriate for the application.
 
-Even though there might be plenty of weak consistency applications out there, we have little experience with the design of such applications other than the potential use of causal consistency to support social network's link sharing, photos and albums dependencies~\cite{lloyd2011don}. We believe it is likely for applications to most of the time have a set of objects that requires linearizability, while others mostly-reads-and-rarely-updated objects could be separately stored in a weaker consistency ("cheaper") storage.
+Even though there might be plenty of weak consistency applications out there, we have little experience with the design of such applications other than the potential use of causal consistency to support social network's link sharing, photos and albums dependencies~\cite{lloyd2011don}. We believe it is likely for applications to most of the time have a set of objects that requires linearizability, while others mostly-reads-and-rarely-updated objects (the "exceptions") could be separately stored in a weaker consistency ("cheaper") storage.
 
 \section{Verification and Validation}
 
@@ -557,7 +561,7 @@ The nodes do not have many requirements, except that they run the Debian operati
 
 In our environment we rented a Linux VM from Amazon to act as the client machine, and set up Docker containers within the VM to act as the etcd nodes.
 
-Jepsen comes prepackaged with the tools to test multiple distributed databases, including MongoDB, etcd, Aerospike, Consul, Elasticsearch, RabbitMQ, Cassandra, Zookeeper, NuoDB, and Kafka. However, Jepsen also provides an interface for a user to test any distributed database he wants by implementing certain methods in the source code. The user needs to implement setup() and teardown() methods for a custom database servers, and setup(), teardown(), and invoke() methods for clients transacting with those servers.
+Jepsen comes prepackaged with the tools to test multiple distributed databases, including MongoDB, etcd, Aerospike, Consul, Elasticsearch, RabbitMQ, Cassandra, Zookeeper, NuoDB, and Kafka.~\cite{jepsenWebsite} However, Jepsen also provides an interface for a user to test any distributed database he wants by implementing certain methods in the source code. The user needs to implement setup() and teardown() methods for a custom database servers, and setup(), teardown(), and invoke() methods for clients transacting with those servers.
 
 \subsection{Methodology}
 
@@ -690,7 +694,7 @@ led to state:
 
 \subsection{Analysis of Results}
 
-We are not absolutely certain of what causes the inconsistent operations. However some prior work\cite{jepsenetcd} has been done in this area and suggests that when a network partition leaves a leader in the minority partition, a new leader election takes place in the majority, so there are two leaders on either side of the partition. The system has a "split-brain". Under the default consistency level, reads are required to go through the leader. If the leader in the minority partition receives a read request before it is aware of the network partition, it will return the value in the register because it believes it is still the leader. The ``quorum=true" consistency level forces reads to go through the same raft consensus process as writes. This explains why there are no inconsistencies when under ``quorume=true", but also why availability decreases under this setting.
+We are not absolutely certain of what causes the inconsistent operations. However some prior work\cite{jepsenetcd} has been done in this area and suggests that when a network partition leaves a leader in the minority partition, a new leader election takes place in the majority, so there are two leaders on either side of the partition. The system has a "split-brain". Under the default consistency level, reads are required to go through the leader. If the leader in the minority partition receives a read request before it is aware of the network partition, it will return the value in the register because it believes it is still the leader. The ``quorum=true" consistency level forces reads to go through the same raft consensus process as writes. This explains why there are no inconsistencies when under ``quorum=true", but also why availability decreases under this setting.
 
 \section{Future Work}
 
