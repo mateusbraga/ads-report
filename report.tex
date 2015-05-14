@@ -435,9 +435,9 @@ The abstract goes here.
 \section{Introduction}
 % no \IEEEPARstart
 
-Our project is concerned with the subject of consistency in distributed systems, with a focus on Etcd and its consistency guarantees in the middle of network partitions. Among the topics involved are consistency guarantees, verification and validation, network partitions, consensus and Jepsen, a framework to evaluate linearizability of distributed systems.
+Our project is concerned with the subject of consistency in distributed systems, with a focus on etcd and its consistency guarantees in the middle of network partitions. Among the topics involved are consistency guarantees, verification and validation, network partitions, consensus and Jepsen, a framework to evaluate linearizability of distributed systems.
 
-Etcd is a consistent, key-store system that uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. Jepsen’s previous work has shown that etcd needed special care to deal with network partitions. In its latest version (v2.0), Etcd has taken measures to make it clear what consistency guarantees are available. Etcd provides two levels of consistency: sequential consistency and linearizability. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting. We reran the Jepsen tests on etcd for each of the two consistency levels.
+etcd is a consistent, key-store system that uses the Raft consensus algorithm and keeps fully available as long as there is a majority connected. Jepsen’s previous work has shown that etcd needed special care to deal with network partitions. In its latest version (v2.0), etcd has taken measures to make it clear what consistency guarantees are available. etcd provides two levels of consistency: sequential consistency and linearizability. We are interested in its linearizability guarantee, as it is the most intuitive consistency model to program against in a distributed setting. We reran the Jepsen tests on etcd for each of the two consistency levels.
 
 A system, in its role of service provider, provides an interface to its users that performs a certain function. In the context of storage systems, memories, and databases, the system's high-level function is fundamental to programmers and involves in a way or another to remember data values for use in computation~\cite{saltzer2009principles}. Very different types of interfaces exist for such systems, for example, SQL, key-value mapping, file system, and objects, but all of them in a way or another allows for the user to read and write data. This project is interested in a particular property of storage systems: its consistency guarantees.
 
@@ -570,23 +570,135 @@ We ran 10 tests with at both the ``default" and ``quorum=true" consistency level
 
 However, we also found that the ``quorum=true" setting, decreased availability during the tests. Under the default setting, no read operation timed out. But under the ``quorum=true" setting, 16\% of read operations timed out, on average. Both consistency settings exhibited timeouts for write and CAS operations at a rate or 20-25\%, on average.
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3in]{images/overallresults}
+\caption{Linearizability success rate for different consistency settings.}
+\label{overallResultsFigure}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3in]{images/availabilityresults}
+\caption{Read availability for different consistency settings.}
+\label{availabilityResultsFigure}
+\end{figure}
 
 \subsection{Interpreting Output}
 
+Jepsen outputs a log to stdout while running tests. In this section we will examine some snapshots of the log and their meanings.
+
+Listing 2 shows the log when Jepsen first starts up, indicated that five etcd nodes (labeled n1 through n5) are brought up and five ``workers" (virtual clients) are brought up to interact with those respective nodes.
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={Jepsen start sequence},label={jepsenStartSequence}]
+=============================================
+INFO  jepsen.system.etcd - :n1 starting etcd
+INFO  jepsen.system.etcd - :n4 starting etcd
+INFO  jepsen.system.etcd - :n3 starting etcd
+INFO  jepsen.system.etcd - :n5 starting etcd
+INFO  jepsen.system.etcd - :n2 starting etcd
+INFO  jepsen.system.etcd - Running nodes: 
+	{:n1 true, :n2 true,
+	 :n3 true, :n4 true, :n5 true}
+INFO  jepsen.system.etcd - :n3 etcd ready
+INFO  jepsen.system.etcd - :n1 etcd ready
+INFO  jepsen.system.etcd - :n4 etcd ready
+INFO  jepsen.system.etcd - :n5 etcd ready
+INFO  jepsen.system.etcd - :n2 etcd ready
+INFO  jepsen.core - Worker 0 starting
+INFO  jepsen.core - Worker 1 starting
+INFO  jepsen.core - Worker 3 starting
+INFO  jepsen.core - Worker 2 starting
+INFO  jepsen.core - Worker 4 starting
+=============================================
+\end{lstlisting}
+\end{figure}
+
+Listing 3 shows the next phase of the Jepsen test, in which the virtual clients invoke database operations and receive responses. The number immediately following the hyphen represents the client process. Some operations succeed, and some fail. For example in Listing 3 we see that process 0 successfully writes the value "3" to the register. Process 4 fails to do a CAS from "2" to "3". Presumably this is because 2 was not the current value of the register.
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={Jepsen Database Operations},label={jepsenTestingPhase}]
+=============================================
+INFO  jepsen.util - 0   :invoke :write  3
+INFO  jepsen.util - 4   :invoke :cas    [2 3]
+INFO  jepsen.util - 1   :invoke :write  3
+INFO  jepsen.util - 0   :ok     :write  3
+INFO  jepsen.util - 2   :ok     :cas    [3 1]
+INFO  jepsen.util - 4   :fail   :cas    [2 3]
+=============================================
+\end{lstlisting}
+\end{figure}
+
+After some time, Jepsen introduces random network partitions. The output in Listing 4 represents nodes n1 and n5 becoming completely isolated from nodes n2, n3, and n4. In etcd, if the current leader is in the minority partition, a new leader election should take place.
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={Network Partition},label={networkPartition}]
+=============================================
+INFO  jepsen.util - :nemesis    :info   
+	:start  "Cut off {:n2 #{:n5 :n1}, :n4 #{:n5 :n1}, 
+	:n3 #{:n5 :n1}, :n1 #{:n3 :n4 :n2}, 
+	:n5 #{:n3 :n4 :n2}}"
+=============================================
+\end{lstlisting}
+\end{figure}
+
+When the operations and network partitions finish, the Knossos subsystem searches over the space of possibly linearizable histories. If it can't find one, it reports an inconsistent operation. Listing 5 shows that one of the read operations successfully read the value of "4" from the register, when all histories indicate the value was "0". Listing 6 shows one possible history (of many) that creates these circumstances.
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={Failure Result},label={failureResult}]
+=============================================
+Inconsistent state transitions:
+([{:value 0} "can't read 4 from register 0"])
+=============================================
+\end{lstlisting}
+\end{figure}
+
+\begin{figure}[!t]
+    \scriptsize
+\begin{lstlisting}[caption={Non-linearizable History},label={nlHistory}]
+=============================================
+World with fixed history:
+3       :invoke :read   nil
+1       :invoke :write  3
+2       :invoke :cas    [3 1]
+0       :invoke :write  3
+3       :invoke :write  1
+4       :invoke :write  0
+1       :invoke :read   0
+0       :invoke :write  0
+3       :invoke :write  2
+2       :invoke :write  4
+3       :invoke :write  2
+1       :invoke :read   2
+0       :invoke :read   2
+4       :invoke :write  3
+3       :invoke :write  4
+0       :invoke :read   4
+1       :invoke :read   4
+3       :invoke :write  0
+
+led to state:
+{:value 0}
+=============================================
+\end{lstlisting}
+\end{figure}
 
 \subsection{Analysis of Results}
 
-
-\subsection{split-brain problem}
-
-We are not absolutely certain of what causes the inconsistent operations. However some prior work has been done in this area and 
+We are not absolutely certain of what causes the inconsistent operations. However some prior work\cite{jepsenetcd} has been done in this area and suggests that when a network partition leaves a leader in the minority partition, a new leader election takes place in the majority, so there are two leaders on either side of the partition. The system has a "split-brain". Under the default consistency level, reads are required to go through the leader. If the leader in the minority partition receives a read request before it is aware of the network partition, it will return the value in the register because it believes it is still the leader. The ``quorum=true" consistency level forces reads to go through the same raft consensus process as writes. This explains why there are no inconsistencies when under ``quorume=true", but also why availability decreases under this setting.
 
 \section{Future Work}
-- latency measurements
-- other types of failure introductions
-- mention other types of issues from other systems
 
-\subsection{Faults found in other systems}
+We measured the effect of network partitions on availability under different consistency levels by recording the number of timed out operations. However, there is a richer set of availability measurements that can be gathered by examining latency statistics. Jepsen source code actually comes with the ability to gather latency measurements and output graphical results, but we could not figure out how to activate it in the scope of this semester.
+
+Our tests partitioned the nodes into ``random halves". There are also different types of network partitions and network problems that can occur, and Jepsen's source code includes the ability to perform many of them. They include ``bridge" (a single node forms the path between two partitions), ``isolate" (isolates a single node from the cluster), ``clock scrambler" (randomly alters the system clock on each node), and ``asymmetric partitions" (traffic is allowed to flow in only one direction between partitions).
+
+Our tests focused on etcd. However, there are many distributed systems that Jepsen supports, and many others that can be added as custom modules. Previous work has exposed specific failure conditions for specific systems. As far as we can see, there has been no work to run a collection of tests in bulk across different systems varying parameters (e.g. type of network partition), and comparing the results. It would be useful not only to compare whether the systems are linearizable, but the availability tradeoffs under different consistency settings. In fact, this was the original goal of the project, but we had some difficulty with the tools that prevented us from pursuing it in the scope of the semester.
 
 
 % An example of a floating figure using the graphicx package.
@@ -674,8 +786,8 @@ We are not absolutely certain of what causes the inconsistent operations. Howeve
 
 
 \section{Conclusion}
-The conclusion goes here.\cite{IEEEexample:bluebookarticle}
 
+We presented a study of consistency in distributed database systems, and the effects of network partitions efcd's fulfillment of consistency guarantees. We found evidence to support that etcd fulfills its promises, and that higher consistency levels bring a tradeoff in availability. We offered a proposed explanation of what happens "behind the scenes" when failures in linearizability happen. Finally, we proposed topics for future work in this area.
 
 
 
@@ -685,8 +797,7 @@ The conclusion goes here.\cite{IEEEexample:bluebookarticle}
 % use section* for acknowledgement
 \section*{Acknowledgment}
 
-
-The authors would like to thank...
+We would like to thank Professor Roxana Geambasu and her Teaching Assistants for an exciting and educational course on distributed systems. We would also like to thank Kyle Kingsbury, the author of the Jepsen project.
 
 
 
